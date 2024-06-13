@@ -1,0 +1,13 @@
+toc: true
+toc-indent: 2em
+toc-depth: none
+section-numbering: '1.'
+lang: zh
+region: CN
+mainfont: Noto Serif CJK SC
+monofont:
+  - Noto Mono
+  - Noto Sans CJK SC
+author:
+  - name: Chen Linxuan
+    email: me@black-desk.cn

@@ -1,0 +1,119 @@
+#!/bin/env bash
+
+set -e
+
+MDOC_DATADIR=@CMAKE_INSTALL_FULL_DATADIR@/mdoc
+MDOC_VERSION=@PROJECT_VERSION@
+MDOC_FILTERS="@MDOC_FILTERS@"
+
+if [ -n "$MDOC_DEBUG" ]; then
+	set -x
+fi
+
+log() {
+	echo >&2 "mdoc: $*"
+}
+
+log "version $MDOC_VERSION"
+
+mdoc_is_installed() {
+	if ! command -v pandoc &>/dev/null; then
+		log "pandoc not found"
+		return 1
+	fi
+
+	if ! command -v typst &>/dev/null; then
+		log "typst not found"
+		return 1
+	fi
+
+	IFS=';' read -ra FILTER <<<"$MDOC_FILTERS"
+	for f in "${FILTER[@]}"; do
+		if [ ! -f "$MDOC_DATADIR/filters/$f" ]; then
+			log "filter $f not found"
+			return 1
+		fi
+	done
+
+	if [ ! -d "$MDOC_DATADIR"/templates ]; then
+		log "templates not found"
+		return 1
+	fi
+}
+
+mdoc_rerun_in_container() {
+	MDOC_CONTAINER_ENGINE=podman
+	if ! command -v podman &>/dev/null; then
+		MDOC_CONTAINER_ENGINE=docker
+	fi
+
+	echo >&2 "Running mdoc in container using $MDOC_CONTAINER_ENGINE"
+
+	echo >&2 "Checking if container image is available" &&
+		$MDOC_CONTAINER_ENGINE image list | grep blackdesk/doc -q ||
+		log "Downloading container image" &&
+		$MDOC_CONTAINER_ENGINE pull docker.io/blackdesk/doc
+
+	script="cd /workspace &&"
+	script="${script} TZ=$(timedatectl show --property=Timezone --value) LANGUAGE=${LANGUAGE} LC_ALL=${LC_ALL} LANG=${LANG}"
+	script="${script} mdoc $*"
+
+	exec $MDOC_CONTAINER_ENGINE run --rm -it \
+		-v "$(pwd)":/workspace \
+		docker.io/blackdesk/doc \
+		bash --login -c \
+		"${script}"
+}
+
+if ! mdoc_is_installed; then
+	log "broken installation detected"
+	log "trying to run in container"
+	mdoc_rerun_in_container "$@"
+fi
+
+MDOC_SYNAX=markdown+east_asian_line_breaks
+MDOC_INPUT="$1"
+if [ -z "$MDOC_INPUT" ]; then
+	MDOC_INPUT=index.md
+fi
+
+log "input file is $MDOC_INPUT"
+
+IFS=';' read -ra FILTER <<<"$MDOC_FILTERS"
+for f in "${FILTER[@]}"; do
+	MDOC_PANDOC_FILTER_ARGS="$MDOC_PANDOC_FILTER_ARGS --lua-filter $MDOC_DATADIR/filters/$f"
+done
+
+MDOC_PANDOC_METADATA_FILE="${MDOC_INPUT%".md"}.meta.yaml"
+if [ ! -f "$MDOC_PANDOC_METADATA_FILE" ]; then
+	MDOC_PANDOC_METADATA_FILE=/dev/null
+fi
+
+if [ ! -f .gitignore ]; then
+	log "generating .gitignore"
+	cat >.gitignore <<EOF
+/media/
+/${MDOC_INPUT%".md"}.typ
+/${MDOC_INPUT%".md"}.pdf
+EOF
+fi
+
+log "running pandoc"
+
+pandoc \
+	"$MDOC_INPUT" \
+	-o "${MDOC_INPUT%".md"}.typ" \
+	--columns=80 \
+	--metadata-file="$MDOC_PANDOC_METADATA_FILE" \
+	-M date="$(date)" \
+	--from $MDOC_SYNAX \
+	--template="$MDOC_DATADIR"/templates/default.typst \
+	--extract-media=media \
+	--shift-heading-level-by=-1 \
+	$MDOC_PANDOC_FILTER_ARGS
+
+log "running typst"
+
+typst compile "${MDOC_INPUT%".md"}.typ" "${MDOC_INPUT%".md"}".pdf
+
+xdg-open "${MDOC_INPUT%".md"}".pdf
