@@ -71,6 +71,10 @@ if ! mdoc_is_installed; then
 	mdoc_rerun_in_container "$@"
 fi
 
+if [ -n "$MDOC_USE_CONTIANER" ]; then
+	mdoc_rerun_in_container "$@"
+fi
+
 MDOC_SYNAX=markdown+east_asian_line_breaks
 MDOC_INPUT="$1"
 if [ -z "$MDOC_INPUT" ]; then
