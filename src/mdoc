@@ -50,13 +50,14 @@ mdoc_rerun_in_container() {
 	echo >&2 "Running mdoc in container using $MDOC_CONTAINER_ENGINE"
 
 	echo >&2 "Checking if container image is available" &&
-		$MDOC_CONTAINER_ENGINE image list | grep blackdesk/doc -q ||
-		log "Downloading container image" &&
-		$MDOC_CONTAINER_ENGINE pull docker.io/blackdesk/doc
+		if ! $MDOC_CONTAINER_ENGINE image list | grep blackdesk/doc -q; then
+			log "Downloading container image" &&
+				$MDOC_CONTAINER_ENGINE pull docker.io/blackdesk/doc
+		fi
 
 	script="cd /workspace &&"
 	script="${script} TZ=$(timedatectl show --property=Timezone --value) LANGUAGE=${LANGUAGE} LC_ALL=${LC_ALL} LANG=${LANG}"
-	script="${script} mdoc $*"
+	script="${script} /app/bin/mdoc $*"
 
 	exec $MDOC_CONTAINER_ENGINE run --rm -it \
 		-v "$(pwd)":/workspace \
@@ -120,4 +121,4 @@ log "running typst"
 
 typst compile "${MDOC_INPUT%".md"}.typ" "${MDOC_INPUT%".md"}".pdf
 
-xdg-open "${MDOC_INPUT%".md"}".pdf
+command -v xdg-open &>/dev/null && xdg-open "${MDOC_INPUT%".md"}".pdf || true
