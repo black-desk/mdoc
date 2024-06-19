@@ -72,7 +72,7 @@ if ! mdoc_is_installed; then
 	mdoc_rerun_in_container "$@"
 fi
 
-if [ -n "$MDOC_USE_CONTIANER" ]; then
+if [ -n "$MDOC_USE_CONTAINER" ]; then
 	mdoc_rerun_in_container "$@"
 fi
 
