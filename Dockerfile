@@ -12,7 +12,7 @@ RUN \
         mv typst-x86_64-unknown-linux-musl/typst /usr/bin/typst && \
         rm -rf ./typst-x86_64-unknown-linux-musl* && \
         cd /source && \
-        ls /source && \
+        rm build -rf && \
         cmake -B build -DCMAKE_INSTALL_PREFIX=/app && \
         cmake --build build && \
         cmake --install build && \
