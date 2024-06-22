@@ -1,5 +1,5 @@
 FROM docker.io/debian:sid-slim
-ADD . /source
+COPY . /source
 RUN \
         apt-get update && \
         apt-get install cmake locales fonts-noto-mono fonts-noto-cjk-extra xz-utils wget make plantuml -y && \
