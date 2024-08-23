@@ -33,8 +33,10 @@ mdoc_rerun_in_container() {
 		fi
 
 	script="cd /workspace &&"
-	script="${script} TZ=$(timedatectl show --property=Timezone --value) LANGUAGE=${LANGUAGE} LC_ALL=${LC_ALL} LANG=${LANG}"
-	script="${script} MDOC_DATADIR=/app/share/mdoc /app/bin/mdoc $*"
+	script+=" TZ=$(timedatectl show --property=Timezone --value)"
+	script+=" LANGUAGE=${LANGUAGE} LC_ALL=${LC_ALL} LANG=${LANG}"
+	script+=" MDOC_DATADIR=/app/share/mdoc"
+	script+=" /app/bin/mdoc $*"
 
 	exec $MDOC_CONTAINER_ENGINE run --rm -it \
 		-v "$(pwd)":/workspace \
@@ -90,7 +92,7 @@ log "Input file is $MDOC_INPUT"
 
 IFS=';' read -ra FILTER <<<"$MDOC_FILTERS"
 for f in "${FILTER[@]}"; do
-	MDOC_PANDOC_FILTER_ARGS="$MDOC_PANDOC_FILTER_ARGS --lua-filter $MDOC_DATADIR/filters/$f"
+	MDOC_PANDOC_FILTER_ARGS+=" --lua-filter $MDOC_DATADIR/filters/$f"
 done
 
 MDOC_PANDOC_METADATA_FILE="${MDOC_INPUT%".md"}.meta.yaml"
