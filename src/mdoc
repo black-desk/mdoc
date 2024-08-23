@@ -2,8 +2,8 @@
 
 set -e
 
-MDOC_DATADIR=@CMAKE_INSTALL_FULL_DATADIR@/mdoc
-MDOC_VERSION=@PROJECT_VERSION@
+MDOC_DATADIR=${MDOC_DATADIR:-@CMAKE_INSTALL_FULL_DATADIR@/mdoc}
+MDOC_VERSION="@PROJECT_VERSION@"
 MDOC_FILTERS="@MDOC_FILTERS@"
 
 if [ -n "$MDOC_DEBUG" ]; then
@@ -14,42 +14,19 @@ log() {
 	echo >&2 "mdoc: $*"
 }
 
-log "version $MDOC_VERSION"
-
-mdoc_is_installed() {
-	if ! command -v pandoc &>/dev/null; then
-		log "pandoc not found"
-		return 1
-	fi
-
-	if ! command -v typst &>/dev/null; then
-		log "typst not found"
-		return 1
-	fi
-
-	IFS=';' read -ra FILTER <<<"$MDOC_FILTERS"
-	for f in "${FILTER[@]}"; do
-		if [ ! -f "$MDOC_DATADIR/filters/$f" ]; then
-			log "filter $f not found"
-			return 1
-		fi
-	done
-
-	if [ ! -d "$MDOC_DATADIR"/templates ]; then
-		log "templates not found"
-		return 1
-	fi
-}
-
 mdoc_rerun_in_container() {
 	MDOC_CONTAINER_ENGINE=podman
-	if ! command -v podman &>/dev/null; then
+	if ! command -v "$MDOC_CONTAINER_ENGINE" &>/dev/null; then
 		MDOC_CONTAINER_ENGINE=docker
 	fi
+	if ! command -v "$MDOC_CONTAINER_ENGINE" &>/dev/null; then
+		log "Error: Container engine (podman or docker) not found"
+		exit 1
+	fi
 
-	echo >&2 "Running mdoc in container using $MDOC_CONTAINER_ENGINE"
+	log "Running mdoc in container using $MDOC_CONTAINER_ENGINE"
 
-	echo >&2 "Checking if container image is available" &&
+	log "Checking if container image is available" &&
 		if ! $MDOC_CONTAINER_ENGINE image list | grep blackdesk/doc -q; then
 			log "Downloading container image" &&
 				$MDOC_CONTAINER_ENGINE pull docker.io/blackdesk/doc
@@ -57,24 +34,51 @@ mdoc_rerun_in_container() {
 
 	script="cd /workspace &&"
 	script="${script} TZ=$(timedatectl show --property=Timezone --value) LANGUAGE=${LANGUAGE} LC_ALL=${LC_ALL} LANG=${LANG}"
-	script="${script} /app/bin/mdoc $*"
+	script="${script} MDOC_DATADIR=/app/share/mdoc /app/bin/mdoc $*"
 
 	exec $MDOC_CONTAINER_ENGINE run --rm -it \
 		-v "$(pwd)":/workspace \
+		--mount type=bind,src="${BASH_SOURCE[0]}",target=/app/bin/mdoc \
 		docker.io/blackdesk/doc \
 		bash --login -c \
 		"${script}"
 }
 
-if ! mdoc_is_installed; then
-	log "broken installation detected"
-	log "trying to run in container"
-	mdoc_rerun_in_container "$@"
-fi
-
 if [ -n "$MDOC_USE_CONTAINER" ]; then
 	mdoc_rerun_in_container "$@"
 fi
+
+mdoc_is_installed() {
+	if ! command -v pandoc &>/dev/null; then
+		log "Warning: pandoc not found"
+		return 1
+	fi
+
+	if ! command -v typst &>/dev/null; then
+		log "Warning: typst not found"
+		return 1
+	fi
+
+	IFS=';' read -ra FILTER <<<"$MDOC_FILTERS"
+	for f in "${FILTER[@]}"; do
+		if [ ! -f "$MDOC_DATADIR/filters/$f" ]; then
+			log "Warning: Filter $f not found"
+			return 1
+		fi
+	done
+
+	if [ ! -d "$MDOC_DATADIR"/templates ]; then
+		log "Warning: Templates not found"
+		return 1
+	fi
+}
+
+if ! mdoc_is_installed; then
+	log "Warning: Broken installation detected, trying to run in container..."
+	mdoc_rerun_in_container "$@"
+fi
+
+log "Version: $MDOC_VERSION"
 
 MDOC_SYNAX=markdown+east_asian_line_breaks
 MDOC_INPUT="$1"
@@ -82,7 +86,7 @@ if [ -z "$MDOC_INPUT" ]; then
 	MDOC_INPUT=index.md
 fi
 
-log "input file is $MDOC_INPUT"
+log "Input file is $MDOC_INPUT"
 
 IFS=';' read -ra FILTER <<<"$MDOC_FILTERS"
 for f in "${FILTER[@]}"; do
@@ -95,7 +99,7 @@ if [ ! -f "$MDOC_PANDOC_METADATA_FILE" ]; then
 fi
 
 if [ ! -f .gitignore ]; then
-	log "generating .gitignore"
+	log "Generating .gitignore..."
 	cat >.gitignore <<EOF
 /media/
 /${MDOC_INPUT%".md"}.typ
@@ -103,7 +107,7 @@ if [ ! -f .gitignore ]; then
 EOF
 fi
 
-log "running pandoc"
+log "Running pandoc..."
 
 pandoc \
 	"$MDOC_INPUT" \
@@ -117,7 +121,7 @@ pandoc \
 	--shift-heading-level-by=-1 \
 	$MDOC_PANDOC_FILTER_ARGS
 
-log "running typst"
+log "Running typst..."
 
 typst compile "${MDOC_INPUT%".md"}.typ" "${MDOC_INPUT%".md"}".pdf
 
