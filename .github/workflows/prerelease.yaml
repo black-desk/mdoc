@@ -1,0 +1,22 @@
+name: "Auto prerelease"
+
+on:
+  push:
+    tags:
+      - "v*-*"
+
+jobs:
+  release:
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: run tools/release.sh
+        run: tools/release.sh
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: true
+          files: release/mdoc
