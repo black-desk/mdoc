@@ -1,0 +1,40 @@
+name: Auto tag when project version in CMakelist.txt updated
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  cmake:
+    name: Apply auto tag from top level CMakelist.txt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Get tag from `project` VERSION
+        id: get_version_from_cmake
+        run: |
+          version=$(
+            cmake -B build &&
+            cd build &&
+            cmake --system-information | awk -F= '$1~/CMAKE_PROJECT_VERSION:STATIC/{print$2}')
+          if [ -z "$version" ]; then
+            echo "Project version not found from cmake's output."
+            exit 1
+          fi
+          echo version="$version" >> $GITHUB_OUTPUT
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ steps.get_version_from_cmake.outputs.version }}" >/dev/null 2>&1; then
+            echo tag_is_existed=true >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+      - name: Run autotag
+        if: steps.check_tag.outputs.tag_is_existed == 'false'
+        uses: phish108/autotag-action@v1.1.64
+        with:
+          tag: ${{ steps.get_version_from_cmake.outputs.version }}
