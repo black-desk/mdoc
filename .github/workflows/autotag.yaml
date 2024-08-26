@@ -16,7 +16,7 @@ jobs:
         id: get_version_from_cmake
         run: |
           version=$(
-            cmake -B build &&
+            cmake -B build &>/dev/null &&
             cd build &&
             cmake --system-information | awk -F= '$1~/CMAKE_PROJECT_VERSION:STATIC/{print$2}')
           if [ -z "$version" ]; then
@@ -28,7 +28,7 @@ jobs:
       - name: Check if tag already exists
         id: check_tag
         run: |
-          if git rev-parse "v${{ steps.get_version_from_cmake.outputs.version }}" >/dev/null 2>&1; then
+          if git rev-parse "v${{ steps.get_version_from_cmake.outputs.version }}" &>/dev/null; then
             echo tag_is_existed=true >> $GITHUB_OUTPUT
             exit 0
           fi
