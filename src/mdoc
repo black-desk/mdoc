@@ -38,13 +38,33 @@ mdoc_rerun_in_container() {
 	script+=" MDOC_DATADIR=/app/share/mdoc"
 	script+=" /app/bin/mdoc $*"
 
-	exec $MDOC_CONTAINER_ENGINE run --rm -it \
+	$MDOC_CONTAINER_ENGINE run --rm -it \
 		-v "$(pwd)":/workspace \
 		--mount type=bind,src="${BASH_SOURCE[0]}",target=/app/bin/mdoc \
 		docker.io/blackdesk/doc \
 		bash --login -c \
 		"${script}"
+
+	if command -v xdg-open &>/dev/null; then
+		exec xdg-open "${MDOC_OUTPUT}".pdf
+	fi
+
+	exit
 }
+
+MDOC_SYNAX=markdown+east_asian_line_breaks
+MDOC_INPUT="$1"
+if [ -z "$MDOC_INPUT" ]; then
+	MDOC_INPUT=index.md
+fi
+
+MDOC_OUTPUT="$2"
+if [ -z "$MDOC_OUTPUT" ]; then
+	MDOC_OUTPUT=$(
+		grep \# -m 1 "$MDOC_INPUT" |
+			awk '{$1 = ""; print substr($0, 2)}'
+	)
+fi
 
 if [ -n "$MDOC_USE_CONTAINER" ]; then
 	mdoc_rerun_in_container "$@"
@@ -81,20 +101,6 @@ if ! mdoc_is_installed; then
 fi
 
 log "Version: $MDOC_VERSION"
-
-MDOC_SYNAX=markdown+east_asian_line_breaks
-MDOC_INPUT="$1"
-if [ -z "$MDOC_INPUT" ]; then
-	MDOC_INPUT=index.md
-fi
-
-MDOC_OUTPUT="$2"
-if [ -z "$MDOC_OUTPUT" ]; then
-	MDOC_OUTPUT=$(
-		grep \# -m 1 "$MDOC_INPUT" |
-			awk '{$1 = ""; print substr($0, 2)}'
-	)
-fi
 
 log "Input file is $MDOC_INPUT"
 log "Output file is $MDOC_OUTPUT"
