@@ -46,10 +46,10 @@ mdoc_rerun_in_container() {
 		"${script}"
 
 	if command -v xdg-open &>/dev/null; then
-		exec xdg-open "${MDOC_OUTPUT}".pdf
+		xdg-open "${MDOC_OUTPUT}".pdf || true
 	fi
 
-	exit
+	exit 0
 }
 
 MDOC_SYNAX=markdown+east_asian_line_breaks
@@ -142,4 +142,6 @@ log "Running typst..."
 
 typst compile "${MDOC_INPUT%".md"}.typ" "${MDOC_OUTPUT}".pdf
 
-(command -v xdg-open &>/dev/null && xdg-open "${MDOC_OUTPUT}".pdf) || true
+if command -v xdg-open &>/dev/null; then
+	xdg-open "${MDOC_OUTPUT}".pdf || true
+fi
