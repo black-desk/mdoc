@@ -1,4 +1,4 @@
-name: Auto tag and release when project version in CMakelist.txt updated
+name: Automatic create tag and release.
 on:
   push:
     branches:
