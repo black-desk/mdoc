@@ -1,4 +1,4 @@
-name: "Auto prerelease"
+name: "Automatic pre-release"
 
 on:
   push:
@@ -6,17 +6,22 @@ on:
       - "v*-*"
 
 jobs:
-  release:
-    runs-on: "ubuntu-latest"
-    permissions:
-      contents: write
-      actions: write
+  auto_pre_release:
+    name: Automatic pre-release
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: run tools/release.sh
-        run: tools/release.sh
-      - uses: "marvinpinto/action-automatic-releases@latest"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run tools/generate-release-assets.sh
+        id: generate_release_assets
+        run: |
+          ASSETS=$(tools/generate-release-assets.sh)
+          echo assets="$ASSETS" >> $GITHUB_OUTPUT
+
+      - name: Automatic pre-release
+        uses: marvinpinto/action-automatic-releases@latest
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: true
-          files: release/mdoc
+          files: ${{ steps.generate_release_assets.outputs.assets }}

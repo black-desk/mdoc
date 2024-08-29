@@ -54,15 +54,18 @@ jobs:
         if: needs.tag.outputs.new_tag
         uses: actions/checkout@v4
 
-      - name: Run tools/release.sh
+      - name: Run tools/generate-release-assets.sh
+        id: generate_release_assets
         if: needs.tag.outputs.new_tag
-        run: tools/release.sh
+        run: |
+          ASSETS=$(tools/generate-release-assets.sh)
+          echo assets="$ASSETS" >> $GITHUB_OUTPUT
 
       - name: Automatic release
-        uses: "marvinpinto/action-automatic-releases@latest"
+        uses: marvinpinto/action-automatic-releases@latest
         if: needs.tag.outputs.new_tag
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           automatic_release_tag: ${{ needs.tag.outputs.new_tag }}
           prerelease: false
-          files: release/mdoc
+          files: ${{ steps.generate_release_assets.outputs.assets }}
