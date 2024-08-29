@@ -40,7 +40,7 @@ jobs:
     name: Automatic release for new tag
     runs-on: ubuntu-latest
     needs:
-      - tag
+      - auto_tag
     steps:
       - name: Checkout repository
         if: needs.auto_tag.outputs.new_tag
