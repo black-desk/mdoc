@@ -5,7 +5,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 project(
   mdoc
-  VERSION 0.2.3
+  VERSION 0.2.4
   DESCRIPTION "A script wrapper for pandoc to convote markdown to pdf."
   HOMEPAGE_URL "https://github.com/black-desk/mdoc"
   LANGUAGES C)
