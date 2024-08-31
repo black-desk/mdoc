@@ -15,6 +15,18 @@ set -o pipefail
 CURRENT_SOURCE_FILE_PATH="${BASH_SOURCE[0]:-$0}"
 CURRENT_SOURCE_FILE_NAME="$(basename -- "$CURRENT_SOURCE_FILE_PATH")"
 
+# This function log messages to stderr works like printf
+# with a prefix of the current script name.
+# Arguments:
+#   $1 - The format string.
+#   $@ - Arguments to the format string, just like printf.
+function log() {
+	local format="$1"
+	shift
+	# shellcheck disable=SC2059
+	printf "$CURRENT_SOURCE_FILE_NAME: $format\n" "$@" >&2 || true
+}
+
 # shellcheck disable=SC2016
 USAGE="$CURRENT_SOURCE_FILE_NAME"'
 
@@ -50,6 +62,7 @@ jobs:
           prerelease: false
           files: ${{ steps.generate_release_assets.outputs.assets }}
 ```
+
 '"
 Usage:
   $CURRENT_SOURCE_FILE_NAME -h
@@ -65,27 +78,26 @@ while getopts ':h' option; do
 		exit
 		;;
 	\?)
-		printf "$CURRENT_SOURCE_FILE_NAME: Unknown option: -%s\n\n" "$OPTARG" >&2
-		echo "$USAGE" >&2
+		log "[ERROR] Unknown option: -%s" "$OPTARG"
 		exit 1
 		;;
 	esac
 done
 shift $((OPTIND - 1))
 
-# NOTE:
-# GitHub actions sets CI environment variable.
-# Reference: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
-if [ -z "$CI" ]; then
-	echo "WARNING: This script is meant to be run in CI environment." >&2
-fi
-
 CURRENT_SOURCE_FILE_DIR="$(dirname -- "$CURRENT_SOURCE_FILE_PATH")"
-
-cd "$CURRENT_SOURCE_FILE_DIR"
+cd -- "$CURRENT_SOURCE_FILE_DIR"
 
 source ./utils.sh
 
-build_cmake_project .. ../build_generate-release-assets -DCMAKE_BUILD_TYPE=Release >&2
+# ------------------------------------------------------------------------------
 
-realpath ../build_generate-release-assets/mdoc
+check_ci
+
+
+BUILD_DIR="../build_generate-release-assets"
+
+build_cmake_project .. "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release >&2
+
+realpath "$BUILD_DIR"/mdoc
+
