@@ -1,11 +1,8 @@
-FROM docker.io/debian:sid-slim
+FROM docker.io/pandoc/extra
 COPY . /source
 RUN \
         apt-get update && \
         apt-get install cmake locales fonts-noto-mono fonts-noto-cjk-extra xz-utils wget make plantuml -y && \
-        wget https://github.com/jgm/pandoc/releases/download/3.2/pandoc-3.2-1-amd64.deb && \
-        dpkg -i pandoc-3.2-1-amd64.deb && \
-        rm pandoc-3.2-1-amd64.deb && \
         wget https://github.com/plantuml/plantuml/releases/download/v1.2024.5/plantuml-gplv2-1.2024.5.jar -O /usr/share/plantuml/plantuml.jar && \
         wget https://github.com/typst/typst/releases/download/v0.11.1/typst-x86_64-unknown-linux-musl.tar.xz && \
         tar -xvf ./typst-x86_64-unknown-linux-musl.tar.xz && \
